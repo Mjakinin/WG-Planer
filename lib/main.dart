@@ -51,19 +51,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<Color> _colors = [
     Colors.orange,
-    Colors.pink,
-    Colors.yellow,
-    Colors.green,
     Colors.blue,
+    Colors.pink,
+    Colors.green,
+    Colors.yellow,
     Colors.red,
   ];
 
   final Map<Color, int> _colorNumbers = {
     Colors.orange: 62,
-    Colors.pink: 63,
-    Colors.yellow: 64,
+    Colors.blue: 63,
+    Colors.pink: 64,
     Colors.green: 65,
-    Colors.blue: 66,
+    Colors.yellow: 66,
     Colors.red: 67,
   };
 
@@ -350,12 +350,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           Align(
                             alignment: Alignment.bottomRight,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 4.0),
+                              padding: const EdgeInsets.only(right: 2.0),
                               child: Text(
                                 '${_colorNumbers[weekColor]}',
                                 style: const TextStyle(
                                   color: Colors.black,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 12.0,
                                 ),
                               ),
                             ),
