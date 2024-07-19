@@ -45,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late SharedPreferences _prefs;
   late Color _selectedColor;
   Color? _userColor;
+  int? _userNumber;
   TimeOfDay _selectedTime = TimeOfDay.now();
   List<int> _selectedDaysOfWeek = [];
   DateTime _focusedDay = DateTime.now();
@@ -75,36 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _requestNotificationPermission();
   }
 
-  void _requestNotificationPermission() async {
-    bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
-    print("Notification permission status: $isAllowed");
-
-    if (!isAllowed) {
-      bool? result = await showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Allow notifications'),
-          content: Text('This app requires permission to send notifications.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text('No'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text('Yes'),
-            ),
-          ],
-        ),
-      );
-
-      if (result != null && result) {
-        AwesomeNotifications().requestPermissionToSendNotifications();
-        print("Notification permission request initiated.");
-      }
-    }
-  }
-
   void _loadPreferences() async {
     _prefs = await SharedPreferences.getInstance();
     print("SharedPreferences loaded.");
@@ -117,14 +88,52 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedColor = Color(colorValue);
       print("Loaded color: $_selectedColor");
 
-      _userColor = (_prefs.getInt('user_color') != null) ? Color(_prefs.getInt('user_color')!) : null;
+      _userColor = (_prefs.getInt('user_color') != null) ? Color(
+          _prefs.getInt('user_color')!) : null;
       print("Loaded user color: $_userColor");
     });
   }
 
+
+  void _requestNotificationPermission() async {
+    bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
+    print("Notification permission status: $isAllowed");
+
+    if (!isAllowed) {
+      bool? result = await showDialog(
+        context: context,
+        builder: (context) =>
+            AlertDialog(
+              title: Text('Allow notifications'),
+              content: Text(
+                  'This app requires permission to send notifications.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: Text('No'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: Text('Yes'),
+                ),
+              ],
+            ),
+      );
+
+      if (result != null && result) {
+        AwesomeNotifications().requestPermissionToSendNotifications();
+        print("Notification permission request initiated.");
+      }
+    }
+  }
+
   void _loadTime() {
-    int hour = _prefs.getInt('hour') ?? TimeOfDay.now().hour;
-    int minute = _prefs.getInt('minute') ?? TimeOfDay.now().minute;
+    int hour = _prefs.getInt('hour') ?? TimeOfDay
+        .now()
+        .hour;
+    int minute = _prefs.getInt('minute') ?? TimeOfDay
+        .now()
+        .minute;
     print("Loaded time: $hour:$minute");
 
     setState(() {
@@ -144,7 +153,9 @@ class _HomeScreenState extends State<HomeScreen> {
     await _prefs.setInt('hour', time.hour);
     await _prefs.setInt('minute', time.minute);
     await _prefs.setString('selected_days', _selectedDaysOfWeek.join(','));
-    print("Saved time: ${time.hour}:${time.minute} and days: ${_selectedDaysOfWeek.join(',')}");
+    print(
+        "Saved time: ${time.hour}:${time.minute} and days: ${_selectedDaysOfWeek
+            .join(',')}");
   }
 
   void _pickTime() async {
@@ -248,10 +259,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Color _getWeekColor(DateTime date) {
-    DateTime mondayOfCurrentWeek = date.subtract(Duration(days: date.weekday - 1));
+    DateTime mondayOfCurrentWeek = date.subtract(
+        Duration(days: date.weekday - 1));
     DateTime startDate = DateTime(2024, 7, 7);
-    DateTime startMonday = startDate.subtract(Duration(days: startDate.weekday - 1));
-    int weeksPassed = mondayOfCurrentWeek.difference(startMonday).inDays ~/ 7;
+    DateTime startMonday = startDate.subtract(
+        Duration(days: startDate.weekday - 1));
+    int weeksPassed = mondayOfCurrentWeek
+        .difference(startMonday)
+        .inDays ~/ 7;
     Color weekColor = _colors[weeksPassed % _colors.length];
     print("Week color for ${date.toLocal()}: $weekColor");
     return weekColor;
@@ -291,8 +306,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+
+
+
+
+
+
   @override
   Widget build(BuildContext context) {
+    print('User color: $_userColor');
+
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Müllplan'),
@@ -322,7 +346,8 @@ class _HomeScreenState extends State<HomeScreen> {
               startingDayOfWeek: StartingDayOfWeek.monday,
               headerStyle: const HeaderStyle(
                 formatButtonVisible: false,
-                titleTextStyle: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold),
+                titleTextStyle: TextStyle(
+                    fontSize: 16.0, fontWeight: FontWeight.bold),
                 formatButtonTextStyle: TextStyle(fontSize: 14.0),
                 leftChevronIcon: Icon(Icons.chevron_left),
                 rightChevronIcon: Icon(Icons.chevron_right),
@@ -343,7 +368,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           alignment: Alignment.center,
                           child: Text(
                             '${date.day}',
-                            style: TextStyle(color: date.weekday == 7 ? Colors.white : Colors.black),
+                            style: TextStyle(
+                                color: date.weekday == 7 ? Colors.white : Colors
+                                    .black),
                           ),
                         ),
                         if (date.weekday == 7)
@@ -399,7 +426,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: ListTile(
                   title: Text(
                     _userColor != null
-                        ? 'Apartment ${_colorNumbers[_userColor!]}'
+                        ? 'Apartment ${_colorNumbers[_userColor]}'
                         : 'Choose your Apartment',
                   ),
                   trailing: CircleAvatar(
