@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Müllplan',
+      title: 'Amrumer',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -82,16 +82,16 @@ class _HomeScreenState extends State<HomeScreen> {
       bool? result = await showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Allow notifications'),
-          content: Text('This app requires permission to send notifications.'),
+          title: const Text('Allow notifications'),
+          content: const Text('This app requires permission to send notifications.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: Text('No'),
+              child: const Text('No'),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: Text('Yes'),
+              child: const Text('Yes'),
             ),
           ],
         ),
