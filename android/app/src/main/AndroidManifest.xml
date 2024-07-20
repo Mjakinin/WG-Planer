@@ -8,9 +8,9 @@
 
 
     <application
-        android:label="muellplan_app"
+        android:label="Müllplaner"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/res_app_icon"
         android:usesCleartextTraffic="true">
 
         <activity
