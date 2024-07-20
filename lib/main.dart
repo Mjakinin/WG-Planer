@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
 
 void main() {
@@ -162,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
           List<int> localSelectedDaysOfWeek = List.from(_selectedDaysOfWeek);
 
           return AlertDialog(
-            title: Text('Choose Weekday'),
+            title: const Text('Choose Weekday'),
             content: StatefulBuilder(
               builder: (context, setState) {
                 return Column(
@@ -210,42 +209,107 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _scheduleNotificationForColorMatch(TimeOfDay time) {
+  void _scheduleNotificationForColorMatch(TimeOfDay time) async {
+    List<int> notificationIds = _prefs.getStringList('notification_ids')?.map(int.parse).toList() ?? [];
+
+    // Alte Benachrichtigungen löschen
+    for (int id in notificationIds) {
+      await AwesomeNotifications().cancel(id);
+      print("Old notification with ID $id canceled.");
+    }
+
     DateTime now = DateTime.now();
     Color weekColor = _getWeekColor(now);
-    String colorHex = '#${weekColor.value.toRadixString(16).padLeft(8, '0')}';
-    print("WEEK FARBE IST JETZT GERADE: $colorHex");
 
-    if (_userColor != null && _userColor == weekColor) {
-      print("FARBEN STIMMEN ÜBEREIN");
+    int userColorIndex = _colors.indexOf(_userColor ?? Colors.transparent);
+    int weekColorIndex = _colors.indexOf(weekColor);
 
-      // Loop through each selected day and schedule a notification
+    int weeksDelay = (userColorIndex - weekColorIndex + _colors.length) % _colors.length;
+    DateTime firstNotificationDate = now.add(Duration(days: weeksDelay * 7));
+
+    List<int> newNotificationIds = [];
+
+    // Erste Benachrichtigung planen
+    for (int dayOfWeek in _selectedDaysOfWeek) {
+      int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+      newNotificationIds.add(id);
+
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: id,
+          channelKey: 'scheduled',
+          title: 'Trash-Time',
+          body: "It's your turn to take out the trash. Thank you!",
+        ),
+        schedule: NotificationCalendar(
+          year: firstNotificationDate.year,
+          month: firstNotificationDate.month,
+          day: firstNotificationDate.day,
+          weekday: dayOfWeek,
+          hour: time.hour,
+          minute: time.minute,
+          second: 0,
+          millisecond: 0,
+          repeats: false,
+        ),
+      ).then((_) {
+        print("First notification scheduled with $weeksDelay weeks delay.");
+      }).catchError((error) {
+        print("Error scheduling first notification: $error");
+      });
+    }
+
+    // Alle weiteren Benachrichtigungen in 6-Wochen-Intervallen planen
+    await _scheduleRecurringNotifications(time, newNotificationIds, firstNotificationDate);
+
+    await _prefs.setStringList('notification_ids', newNotificationIds.map((id) => id.toString()).toList());
+  }
+
+  Future<void> _scheduleRecurringNotifications(TimeOfDay time, List<int> newNotificationIds, DateTime startDate) async {
+    DateTime nextNotificationDate = startDate.add(Duration(days: 6 * 7)); // 6 Wochen nach dem Startdatum
+
+    for (int i = 0; i < 36; i++) { // Äußere Schleife für insgesamt 36 Benachrichtigungen
       for (int dayOfWeek in _selectedDaysOfWeek) {
-        AwesomeNotifications().createNotification(
+        int id = DateTime.now().millisecondsSinceEpoch.remainder(100000);
+        newNotificationIds.add(id);
+
+        // Debug-Ausgabe des geplanten Benachrichtigungsdatums
+        print("Scheduling notification with ID $id for date: $nextNotificationDate");
+
+        await AwesomeNotifications().createNotification(
           content: NotificationContent(
-            id: 2,
+            id: id,
             channelKey: 'scheduled',
             title: 'Trash-Time',
             body: "It's your turn to take out the trash. Thank you!",
           ),
           schedule: NotificationCalendar(
+            year: nextNotificationDate.year,
+            month: nextNotificationDate.month,
+            day: nextNotificationDate.day,
             weekday: dayOfWeek,
             hour: time.hour,
             minute: time.minute,
             second: 0,
             millisecond: 0,
-            repeats: true,
+            repeats: false,
           ),
         ).then((_) {
-          print("Color notification sent.");
+          print("Notification scheduled for $nextNotificationDate.");
         }).catchError((error) {
-          print("Error sending color notification: $error");
+          print("Error scheduling notification: $error");
         });
+
+        // Nächstes Benachrichtigungsdatum auf 6 Wochen verschieben
+        nextNotificationDate = nextNotificationDate.add(Duration(days: 6 * 7));
       }
-    } else {
-      print("User color does not match week color.");
     }
+
+    await _prefs.setStringList('notification_ids', newNotificationIds.map((id) => id.toString()).toList());
   }
+
+
+
 
   Color _getWeekColor(DateTime date) {
     DateTime mondayOfCurrentWeek = date.subtract(Duration(days: date.weekday - 1));
@@ -291,6 +355,55 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showApartmentSelectionDialog() async {
+    Color? selectedColor;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Select Apartment'),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: _colors.map((color) {
+                  return RadioListTile<Color>(
+                    title: Text('Apartment ${_colorNumbers[color]}'),
+                    value: color,
+                    groupValue: selectedColor,
+                    onChanged: (Color? value) {
+                      setState(() {
+                        selectedColor = value;
+                      });
+                    },
+                    activeColor: color,
+                  );
+                }).toList(),
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (selectedColor != null) {
+                  _selectUserColor(selectedColor);
+                  _pickTime();
+                }
+              },
+              child: Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -299,7 +412,7 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.access_time),
-            onPressed: _pickTime,
+            onPressed: _showApartmentSelectionDialog,
           ),
           IconButton(
             icon: const Icon(Icons.today),
@@ -350,10 +463,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           Align(
                             alignment: Alignment.bottomRight,
                             child: Padding(
-                              padding: const EdgeInsets.only(right: 4.0),
+                              padding: const EdgeInsets.only(right: 2.0, top: 0.0),
                               child: Text(
                                 '${_colorNumbers[weekColor]}',
                                 style: const TextStyle(
+                                  fontSize: 12,
                                   color: Colors.black,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -373,40 +487,8 @@ class _HomeScreenState extends State<HomeScreen> {
               headerVisible: true,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.blueAccent, width: 2.0),
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              child: PopupMenuButton<Color?>(
-                onSelected: (Color? newColor) {
-                  _selectUserColor(newColor);
-                },
-                itemBuilder: (BuildContext context) {
-                  return _colors.map((Color color) {
-                    return PopupMenuItem<Color?>(
-                      value: color,
-                      child: Text(
-                        'Apartment ${_colorNumbers[color]}',
-                        style: TextStyle(color: color),
-                      ),
-                    );
-                  }).toList();
-                },
-                child: ListTile(
-                  title: Text(
-                    _userColor != null
-                        ? 'Apartment ${_colorNumbers[_userColor!]}'
-                        : 'Choose your Apartment',
-                  ),
-                  trailing: CircleAvatar(
-                    backgroundColor: _userColor ?? Colors.grey,
-                  ),
-                ),
-              ),
-            ),
+          const Padding(
+            padding: EdgeInsets.only(top: 0.0, right: 16.0),
           ),
         ],
       ),
